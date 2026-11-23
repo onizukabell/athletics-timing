@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>บันทึกเวลากีฑา</title>
+<style>
+:root{--bg:#f6f7f9;--c:#fff;--t:#1c2330;--m:#6b7586;--a:#0b6bcb;--ok:#dff5e5;--b:#d9dee6}
+@media(prefers-color-scheme:dark){:root{--bg:#12161c;--c:#1b212b;--t:#e8ecf2;--m:#98a3b5;--a:#5aa7ff;--ok:#1d4a2c;--b:#2c3544}}
+*{box-sizing:border-box}
+body{margin:0;font:16px system-ui,"Noto Sans Thai",sans-serif;background:var(--bg);color:var(--t)}
+main{max-width:640px;margin:auto;padding:12px}
+h1{font-size:18px;margin:4px 0}h3{font-size:15px;margin:14px 0 6px}
+.s{color:var(--m);font-size:13px}
+.card{background:var(--c);border:1px solid var(--b);border-radius:10px;padding:10px;margin:10px 0}
+table{width:100%;border-collapse:collapse}td{padding:4px;border-bottom:1px solid var(--b)}
+select,input,button{font:inherit;color:var(--t);background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:8px;width:100%}
+button{width:auto;cursor:pointer}
+td:first-child{width:32px;color:var(--m)}td:nth-child(2){width:38%}
+.r{display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px}
+.r.q{background:var(--ok);font-weight:600}
+.top{display:flex;gap:8px;align-items:center;justify-content:space-between}
+</style></head><body><main>
+<div class="top"><div><h1>บันทึกเวลากีฑา · ชลธีศรีแม่ทาเกมส์</h1>
+<div class="s">25 พ.ย. 2569 รอบคัดเลือก · 26 พ.ย. รอบชิงชนะเลิศ</div></div>
+<button onclick="cfg()">⚙︎ Sheet</button></div>
+<div class="s" id="st" style="margin:6px 0"></div>
+<select id="ev" onchange="cur=+this.value;localStorage.ev=cur;all()"></select>
+<div class="card"><b>รอบคัดเลือก</b><div id="in"></div></div>
+<div class="card"><b>อันดับรอบคัดเลือก (8 ทีม)</b> <span class="s">· 4 ทีมเวลาดีที่สุดเข้ารอบชิง</span><div id="rk"></div></div>
+<div class="card"><b>รอบชิงชนะเลิศ</b><div id="fin"></div><h3>ผลการแข่งขัน</h3><div id="frk"></div></div>
+</main>
+<script>
+const T=['คต','มม','พด','ปล','นยค','มล','ศป','ปมล'];
+const EV=[['ก่อนประถม ชาย',60],['ก่อนประถม หญิง',60],['อายุไม่เกิน 8 ปี ชาย',60],['อายุไม่เกิน 8 ปี หญิง',60],['อายุไม่เกิน 10 ปี ชาย',60],['อายุไม่เกิน 10 ปี หญิง',60],
+['ก่อนประถม ชาย',80],['ก่อนประถม หญิง',80],['อายุไม่เกิน 8 ปี ชาย',80],['อายุไม่เกิน 8 ปี หญิง',80],['อายุไม่เกิน 10 ปี ชาย',80],['อายุไม่เกิน 10 ปี หญิง',80],
+['วิ่งผลัดก่อนประถมผสม','8x50'],['อายุไม่เกิน 12 ปี ชาย',100],['อายุไม่เกิน 12 ปี หญิง',100],['อายุไม่เกิน 12 ปี ชาย',200],['อายุไม่เกิน 12 ปี หญิง',200],
+['อายุไม่เกิน 8 ปี ชาย','8x50'],['อายุไม่เกิน 8 ปี หญิง','8x50'],['อายุไม่เกิน 10 ปี ชาย','8x50'],['อายุไม่เกิน 10 ปี หญิง','8x50'],
+['อายุไม่เกิน 12 ปี ชาย','4x100'],['อายุไม่เกิน 12 ปี หญิง','4x100'],['อายุไม่เกิน 15 ปี ชาย','4x100'],['อายุไม่เกิน 15 ปี หญิง','4x100']];
+const L=(s,d)=>[...Array(8)].map((_,j)=>T[((s+d*j)%8+8)%8]);
+// ลำดับช่องวิ่งตามเอกสาร (รุ่น 124-125 ว่าง ให้เลือกในแอป)
+const DL=i=>i<6?L(i,-1):i<22?L(i%8,1):i==22?L(6,-1):Array(8).fill('');
+const $=x=>document.getElementById(x),esc=s=>String(s).replace(/"/g,'&quot;');
+let db=JSON.parse(localStorage.tm||'{}'),q={},cur=+localStorage.ev||0,tm;
+const url=()=>localStorage.url||'',id=()=>101+cur;
+const st=m=>$('st').textContent=m;
+function cfg(){const u=prompt('วาง URL ของ Google Apps Script Web App (ว่าง = เก็บในเครื่องเท่านั้น)',url());if(u!==null){localStorage.url=u.trim();load()}}
+function put(k,v){db[k]=v;q[k]=v;localStorage.tm=JSON.stringify(db);clearTimeout(tm);tm=setTimeout(flush,700);st('กำลังบันทึก…')}
+async function flush(){
+ if(!url()){q={};return st('บันทึกในเครื่อง (ยังไม่ได้เชื่อม Google Sheet)')}
+ const b=q;q={};
+ try{await fetch(url(),{method:'POST',body:JSON.stringify(b)});st('บันทึกแล้ว ✓')}
+ catch(e){q=Object.assign({},b,q);st('บันทึกไม่สำเร็จ จะลองใหม่…');setTimeout(flush,5000)}}
+async function load(){
+ if(!url())return st('โหมดในเครื่อง — กด ⚙︎ Sheet เพื่อเชื่อมต่อ');
+ try{const r=await(await fetch(url())).json();db=Object.assign(db,r,q);localStorage.tm=JSON.stringify(db);st('ซิงค์แล้ว ✓');
+  if(!document.activeElement||document.activeElement.tagName!='INPUT')all()}
+ catch(e){st('เชื่อมต่อ Google Sheet ไม่ได้')}}
+const lanes=()=>{const v=db['L|'+id()];if(v==null)return DL(cur);const a=v.split(',');return Array.from({length:8},(_,i)=>a[i]||'')};
+const key=(r,t)=>`R|${id()}|${r}|${t}`;
+function parse(s){const m=String(s||'').trim().replace(',','.').match(/^(?:(\d+):)?(\d+(?:\.\d+)?)$/);return m?(+(m[1]||0))*60+ +m[2]:Infinity}
+function rank(r,teams){return teams.map(t=>({t,v:db[key(r,t)]||'',s:parse(db[key(r,t)])})).sort((a,b)=>a.s===b.s?0:a.s<b.s?-1:1)}
+const opt=t=>'<option value="">–</option>'+T.map(x=>`<option${x==t?' selected':''}>${x}</option>`).join('');
+const inp=(r,t)=>`<input inputmode="decimal" placeholder="เวลา เช่น 9.85 หรือ 1:05.20" value="${esc(db[key(r,t)]||'')}" onchange="setT('${r}','${t}',this.value)">`;
+function setL(j,v){const a=lanes();a[j]=v;put('L|'+id(),a.join(','));rIn();rRank()}
+function setT(r,t,v){put(key(r,t),v.trim());r=='h'?rRank():rFR()}
+function rIn(){let h='';const a=lanes();
+ for(let g=0;g<2;g++){h+=`<h3>รอบที่ ${g+1} · ช่อง ${g*4+1}–${g*4+4}</h3><table>`;
+  for(let j=g*4;j<g*4+4;j++)h+=`<tr><td>${j+1}</td><td><select onchange="setL(${j},this.value)">${opt(a[j])}</select></td><td>${a[j]?inp('h',a[j]):''}</td></tr>`;
+  h+='</table>'}
+ $('in').innerHTML=h}
+const top4=()=>rank('h',lanes().filter(Boolean)).filter(x=>isFinite(x.s)).slice(0,4).map(x=>x.t);
+function rRank(){const R=rank('h',lanes().filter(Boolean));let n=0;
+ $('rk').innerHTML=R.map((x,i)=>{const q=isFinite(x.s)&&n++<4;return`<div class="r${q?' q':''}"><span>${i+1}. ${x.t}</span><span>${x.v||'–'}${q?' ✓':''}</span></div>`}).join('')||'<div class="s">ยังไม่มีทีม</div>';
+ rFin()}
+function rFin(){const t=top4();
+ $('fin').innerHTML=t.length?`<table>${t.map(x=>`<tr><td></td><td><b>${x}</b></td><td>${inp('f',x)}</td></tr>`).join('')}</table>`:'<div class="s">รอผลรอบคัดเลือก</div>';
+ rFR()}
+function rFR(){const t=top4(),M=['🥇','🥈','🥉','4.'];let n=0;
+ $('frk').innerHTML=rank('f',t).map(x=>`<div class="r"><span>${isFinite(x.s)?M[n++]:'–'} ${x.t}</span><span>${x.v||'–'}</span></div>`).join('')}
+function all(){$('ev').innerHTML=EV.map((e,i)=>`<option value="${i}"${i==cur?' selected':''}>${101+i} · ${e[0]} ${e[1]}${isNaN(e[1])?'':' ม.'}</option>`).join('');rIn();rRank()}
+all();load();setInterval(load,20000);
+</script></body></html>
